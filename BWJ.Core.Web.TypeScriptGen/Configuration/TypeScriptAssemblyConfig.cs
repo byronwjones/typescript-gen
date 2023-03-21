@@ -1,4 +1,5 @@
 ﻿using BWJ.Core.Web.TypeScriptGen.Annotation;
+using System;
 using System.Reflection;
 
 namespace BWJ.Core.Web.TypeScriptGen.Configuration
@@ -12,7 +13,9 @@ namespace BWJ.Core.Web.TypeScriptGen.Configuration
             bool clearOutputDirectoryBeforeRegeneration,
             string namespacePattern = ".+",
             TypeScriptOutput? defaultObjectTypeGeneration = null,
-            TypeScriptNonValue? regardNativeNullablesAs = null)
+            TypeScriptNonValue? regardNativeNullablesAs = null,
+            Func<string, string>? namespaceTransformer = null,
+            Func<string, Type, string>? typeNameTransformer = null)
         {
             AreaConfigurations = new TypeScriptAreaConfig[] {
                 new TypeScriptAreaConfig (
@@ -21,7 +24,9 @@ namespace BWJ.Core.Web.TypeScriptGen.Configuration
                     inclusionMode,
                     clearOutputDirectoryBeforeRegeneration,
                     defaultObjectTypeGeneration,
-                    regardNativeNullablesAs
+                    regardNativeNullablesAs,
+                    namespaceTransformer,
+                    typeNameTransformer
                 ),
             };
             Assembly = assembly;

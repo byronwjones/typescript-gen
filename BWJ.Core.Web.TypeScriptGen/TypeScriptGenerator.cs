@@ -56,6 +56,7 @@ namespace BWJ.Core.Web.TypeScriptGen
         {
             (new DirectoryPreparer(_rootPath)).PrepareDirectories(_configs);
             _typesToGenerate = (new GenerationTargetCollectionBuilder()).GetGenerationTargets(_configs);
+            DetermineInterfaceRendering();
             DetermineClassRendering();
 
             foreach (var type in _typesToGenerate)
@@ -79,6 +80,16 @@ namespace BWJ.Core.Web.TypeScriptGen
 
             needsClassRender.ForEach(t => t.GenerateClass = true);
             DetermineClassRenderRecursive(needsClassRender);
+        }
+
+        private void DetermineInterfaceRendering()
+        {
+            var needsIfaceRender = _typesToGenerate
+                .Where(t => t.InterfaceGenerationRequested(_defaultObjectTypeGeneration))
+                .ToList();
+
+            needsIfaceRender.ForEach(t => t.GenerateInterface = true);
+            DetermineClassRenderRecursive(needsIfaceRender);
         }
 
         private void DetermineClassRenderRecursive(List<GenerationTarget> needsClass)
@@ -135,6 +146,8 @@ namespace BWJ.Core.Web.TypeScriptGen
             ConfigureImportStatements(generationTarget);
 
             var filePath = Path.Combine(generationTarget.SourcePath.ToArray());
+            filePath = Path.Combine(_rootPath, filePath);
+            Directory.CreateDirectory(filePath);
             var fileName = $"{GeneratorUtils.GetSanitizedTypeName(generationTarget.Type).ToKebabCase()}.ts";
             using var writer = new StreamWriter(Path.Combine(filePath, fileName));
 
@@ -232,7 +245,7 @@ namespace BWJ.Core.Web.TypeScriptGen
             var filePath = Path.Combine(dirPath, $"{enumType.Name.ToKebabCase()}.ts");
 
             var sb = new StringBuilder();
-            sb.AppendLine($"export enum {enumType} {{");
+            sb.AppendLine($"export enum {enumType.Name} {{");
             foreach (Enum value in enumType.GetEnumValues())
             {
                 sb.AppendLine($"    {Enum.GetName(enumType, value)} = {value.ToString("D")},");

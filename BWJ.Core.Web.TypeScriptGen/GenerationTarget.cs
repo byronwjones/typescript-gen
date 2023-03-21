@@ -47,6 +47,8 @@ namespace BWJ.Core.Web.TypeScriptGen
 
         private bool IsOutputGenerationRequested(TypeScriptOutput rootOutputDemand, TypeScriptOutput outputType)
         {
+            if (Type.IsEnum) { return false; }
+
             var outputAttr = Type.GetCustomAttribute<TypeScriptOutputAttribute>();
             if (outputAttr is not null && (outputAttr.Output & outputType) == outputType) { return true; }
 
