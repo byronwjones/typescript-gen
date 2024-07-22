@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BWJ.Core.Web.TypeScriptGen
 {
@@ -29,24 +27,24 @@ namespace BWJ.Core.Web.TypeScriptGen
                 backupSteps = uiPaths.Length;
             }
 
-            var path = string.Empty;
+            var path = new List<string>();
             if (backupSteps == 0)
             {
-                path = "./";
+                path.Add(".");
             }
             else
             {
                 for (var i = 0; i < backupSteps; i++)
                 {
-                    path += "../";
+                    path.Add("..");
                 }
             }
 
             var skipCount = commonRoot != string.Empty ? Array.IndexOf(biPaths, commonRoot) + 1 : 0;
-            path += string.Join('/', biPaths.Skip(skipCount));
+            path.AddRange(beingImported.SourcePath.Skip(skipCount));
 
-            path = $"{path}/{beingImported.Type.Name.ToKebabCase()}";
-            return path;
+            path.Add(beingImported.Type.Name.ToKebabCase());
+            return string.Join('/', path);
         }
 
         public static string[] GetTargetPaths(GenerationTarget gt)
@@ -76,6 +74,18 @@ namespace BWJ.Core.Web.TypeScriptGen
             {
                 value = type.GenericArguments[0].IsNullable || type.GenericArguments[0].IsUndefinable || type.GenericArguments[0].IsArray ?
                     $"({GetTypeScriptPropertyType(type.GenericArguments[0])})[]" : $"{GetTypeScriptPropertyType(type.GenericArguments[0])}[]";
+            }
+            else if (type.IsDictionary)
+            {
+                var args = type.GenericArguments.ToArray();
+                if (string.IsNullOrEmpty(args[0].DefaultEnumValue) == false)
+                {
+                    value = $"{{ [key in {GetTypeScriptPropertyType(args[0])}]?: {GetTypeScriptPropertyType(args[1])} }}";
+                }
+                else
+                {
+                    value = $"{{ [key: {GetTypeScriptPropertyType(args[0])}]: {GetTypeScriptPropertyType(args[1])} }}";
+                }
             }
             else
             {
@@ -119,6 +129,10 @@ namespace BWJ.Core.Web.TypeScriptGen
             {
                 value = "[]";
             }
+            else if (type.IsDictionary)
+            {
+                value = "{}";
+            }
             else if (false == string.IsNullOrEmpty(type.DefaultEnumValue))
             {
                 value = $"{type.TypeName}.{type.DefaultEnumValue}";
@@ -134,6 +148,10 @@ namespace BWJ.Core.Web.TypeScriptGen
             else if (type.TypeName == "boolean")
             {
                 value = "false";
+            }
+            else if (type.TypeName == "Date")
+            {
+                value = "new Date()";
             }
             else
             {
@@ -170,5 +188,18 @@ namespace BWJ.Core.Web.TypeScriptGen
             .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))?
             .GetGenericArguments()[0];
         }
+
+        public static bool IsNumericType(Type type)
+            => type == typeof(long) ||
+                type == typeof(int) ||
+                type == typeof(short) ||
+                type == typeof(ulong) ||
+                type == typeof(uint) ||
+                type == typeof(ushort) ||
+                type == typeof(decimal) ||
+                type == typeof(float) ||
+                type == typeof(double) ||
+                type == typeof(byte) ||
+                type == typeof(sbyte);
     }
 }

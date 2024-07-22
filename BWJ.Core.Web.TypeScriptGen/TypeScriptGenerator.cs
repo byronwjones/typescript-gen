@@ -1,17 +1,11 @@
 ﻿using BWJ.Core.Web.TypeScriptGen.Annotation;
 using BWJ.Core.Web.TypeScriptGen.Configuration;
-using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Security.Claims;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace BWJ.Core.Web.TypeScriptGen
@@ -20,36 +14,30 @@ namespace BWJ.Core.Web.TypeScriptGen
     {
         private readonly string _rootPath;
         private readonly TypeScriptNonValue _regardNativeNullablesAs;
-        private readonly TypeScriptOutput _defaultObjectTypeGeneration;
-        private readonly Dictionary<Type, Type> _propertyTypeMappings;
+        private readonly TypeScriptObjectAsset _defaultObjectTypeGeneration;
         private readonly TypeScriptAssemblyConfig[] _configs;
         private List<GenerationTarget> _typesToGenerate = new List<GenerationTarget>();
 
         public TypeScriptGenerator(
             string rootPath,
-            Dictionary<Type, Type> propertyTypeMappings,
             TypeScriptNonValue regardNativeNullablesAs,
-            TypeScriptOutput defaultObjectTypeGeneration,
-            params TypeScriptAssemblyConfig[] configs)
+            TypeScriptObjectAsset defaultObjectTypeGeneration,
+            TypeScriptAssemblyConfig assemblyConfig,
+            params TypeScriptAssemblyConfig[] additionalAssemblyConfigs)
         {
-            _rootPath = rootPath;
-            _regardNativeNullablesAs = regardNativeNullablesAs;
-            _defaultObjectTypeGeneration = defaultObjectTypeGeneration;
-            _propertyTypeMappings = propertyTypeMappings;
-            _configs = configs;
-        }
+            if(regardNativeNullablesAs == TypeScriptNonValue.Inherit)
+            {
+                throw new ArgumentException("Value 'Inherit' not valid in this context", nameof(regardNativeNullablesAs));
+            }
+            if (defaultObjectTypeGeneration == TypeScriptObjectAsset.Inherit)
+            {
+                throw new ArgumentException("Value 'Inherit' not valid in this context", nameof(defaultObjectTypeGeneration));
+            }
 
-        public TypeScriptGenerator(
-            string rootPath,
-            TypeScriptNonValue regardNativeNullablesAs,
-            TypeScriptOutput defaultObjectTypeGeneration,
-            params TypeScriptAssemblyConfig[] configs)
-        {
             _rootPath = rootPath;
             _regardNativeNullablesAs = regardNativeNullablesAs;
             _defaultObjectTypeGeneration = defaultObjectTypeGeneration;
-            _propertyTypeMappings = new Dictionary<Type, Type>();
-            _configs = configs;
+            _configs = (new TypeScriptAssemblyConfig[] { assemblyConfig }).Concat(additionalAssemblyConfigs).ToArray();
         }
 
         public async Task GenerateTypeScript()
@@ -117,9 +105,16 @@ namespace BWJ.Core.Web.TypeScriptGen
 
         private void ConfigureImportStatements(GenerationTarget generationTarget)
         {
-            var generatedPropertyTypes = generationTarget.MemberProperties
-                .Where(prop => _typesToGenerate.Any(t => t.Type.AssemblyQualifiedName == prop.PropertyType.AssemblyQualifiedName))
-                .Select(prop => _typesToGenerate.First(t => t.Type.AssemblyQualifiedName == prop.PropertyType.AssemblyQualifiedName));
+            var generatedPropertyTypes = generationTarget.TypeScriptProperties
+                .Select(tsProp => new TypeScriptType[] { tsProp }.Concat(tsProp.GenericArguments))
+                .Aggregate(new List<TypeScriptType>(), (allProps, propGroup) =>
+                {
+                    allProps.AddRange(propGroup);
+                    return allProps;
+                })
+                .Where(tsProp => _typesToGenerate.Any(t => t.Type.AssemblyQualifiedName == tsProp.AssemblyQualifiedName))
+                .Select(tsProp => _typesToGenerate.First(t => t.Type.AssemblyQualifiedName == tsProp.AssemblyQualifiedName))
+                .Distinct();
 
             foreach (var genProp in generatedPropertyTypes)
             {
@@ -128,7 +123,7 @@ namespace BWJ.Core.Web.TypeScriptGen
                 {
                     importTypes.Add($"I{genProp.Type.Name}");
                 }
-                else if (genProp.Type.IsEnum || genProp.GenerateClass)
+                if (genProp.Type.IsEnum || genProp.GenerateClass)
                 {
                     importTypes.Add(genProp.Type.Name);
                 }
@@ -214,7 +209,7 @@ namespace BWJ.Core.Web.TypeScriptGen
                 sourceCode.AppendLine();
             }
 
-            sourceCode.AppendLine(body.ToString());
+            sourceCode.Append(body.ToString());
             sourceCode.AppendLine("}");
 
             return sourceCode.ToString();
@@ -276,15 +271,15 @@ namespace BWJ.Core.Web.TypeScriptGen
                 {
                     nullableAs = generationTarget.Type.GetCustomAttribute<NullableAsTypeScriptAttribute>();
                 }
-                if (nullableAs is not null)
+                if (nullableAs is not null && nullableAs.NonValueType != TypeScriptNonValue.Inherit )
                 {
                     regardNullableAs = nullableAs.NonValueType;
                 }
                 if (regardNullableAs is null)
                 {
-                    regardNullableAs = generationTarget.AreaConfig.RegardNativeNullablesAs is not null ?
+                    regardNullableAs = generationTarget.AreaConfig.RegardNativeNullablesAs != TypeScriptNonValue.Inherit ?
                         generationTarget.AreaConfig.RegardNativeNullablesAs :
-                        generationTarget.AreaConfig.AssemblyConfig!.RegardNativeNullablesAs is not null ?
+                        generationTarget.AreaConfig.AssemblyConfig!.RegardNativeNullablesAs != TypeScriptNonValue.Inherit ?
                         generationTarget.AreaConfig.AssemblyConfig.RegardNativeNullablesAs : _regardNativeNullablesAs;
                 }
 
@@ -332,11 +327,6 @@ namespace BWJ.Core.Web.TypeScriptGen
             Type type,
             IEnumerable<string>? genericParameterNames = null)
         {
-            if (_propertyTypeMappings.ContainsKey(type))
-            {
-                type = _propertyTypeMappings[type];
-            }
-
             if (genericParameterNames?.Contains(type.Name) == true)
             {
                 tsType.TypeName = type.Name;
@@ -350,17 +340,7 @@ namespace BWJ.Core.Web.TypeScriptGen
             {
                 tsType.TypeName = "string";
             }
-            else if (type == typeof(long) ||
-                type == typeof(int) ||
-                type == typeof(short) ||
-                type == typeof(ulong) ||
-                type == typeof(uint) ||
-                type == typeof(ushort) ||
-                type == typeof(decimal) ||
-                type == typeof(float) ||
-                type == typeof(double) ||
-                type == typeof(byte) ||
-                type == typeof(sbyte) ||
+            else if (GeneratorUtils.IsNumericType(type) ||
                 (type.IsEnum && _typesToGenerate.Any(t => t.Type.AssemblyQualifiedName == type.AssemblyQualifiedName) == false))
             {
                 tsType.TypeName = "number";
@@ -369,6 +349,11 @@ namespace BWJ.Core.Web.TypeScriptGen
             {
                 tsType.TypeName = type.Name;
                 tsType.AssemblyQualifiedName = type.AssemblyQualifiedName!;
+                var enumNames = type.GetEnumNames();
+                if(enumNames.Any() == false)
+                {
+                    throw new ArgumentOutOfRangeException("Generated Enumerations must have at least one member", nameof(tsType));
+                }
                 tsType.DefaultEnumValue = type.GetEnumNames()[0];
             }
             else if (type == typeof(DateTime))
@@ -377,6 +362,27 @@ namespace BWJ.Core.Web.TypeScriptGen
             }
 
             if (string.IsNullOrWhiteSpace(tsType.TypeName) == false) { return; }
+
+            if (type.IsGenericType &&
+                type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                //keys can only be numbers or strings (or enums)
+                var keyValueTypes = type.GetGenericArguments();
+                var keyType = keyValueTypes[0];
+                if(keyType.IsEnum || GeneratorUtils.IsNumericType(keyType) || keyType == typeof(string))
+                {
+                    tsType.TypeName = string.Empty;
+                    tsType.IsDictionary = true;
+                    tsType.GenericArguments = keyValueTypes
+                    .Select(x => ToTypeScriptType(x))
+                    .ToList();
+                    return;
+                }
+                else
+                {
+                    throw new ArgumentOutOfRangeException("Key parameter type of generated Dictionary<,> types must be an Enumeration, String, or numeric", nameof(tsType));
+                }
+            }
 
             var arrType = GeneratorUtils.GetIEnumerableType(type);
             if (arrType is not null)

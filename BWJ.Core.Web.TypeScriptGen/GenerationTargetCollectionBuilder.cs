@@ -39,24 +39,26 @@ namespace BWJ.Core.Web.TypeScriptGen
         {
             var applicableTypes = renderableTypes
                 .Where(t => TypeIncludable(t, config.InclusionMode)
-                            && TypeNamespaceMatchesPattern(t, config.NamespacePattern)
+                            && TypeNamespaceMatchesPattern(t, config.NamespacePattern, config.NamespaceTransformer)
                             && IsNovelType(t));
 
             var pathParts = config.OutputDirectoryPath.Split('\\', '/');
-            var sigIndex = GetSignificantNamespaceIndex(applicableTypes);
+            var sigIndex = GetSignificantNamespaceIndex(applicableTypes, config.NamespaceTransformer);
 
             var genTypes = applicableTypes.Select(x => {
+                var type = config.TypeTransformer?.Invoke(x) ?? x;
                 var g = new GenerationTarget(x, config);
                 g.SourcePath.AddRange(pathParts);
-                g.SourcePath.AddRange(GetSignificantNamespace(x, sigIndex));
+                g.SourcePath.AddRange(GetSignificantNamespace(x, sigIndex, config.NamespaceTransformer));
                 return g;
             });
             _generationTargets.AddRange(genTypes);
         }
 
-        private static IEnumerable<string> GetSignificantNamespace(Type type, int significantNamespaceIndex)
+        private static IEnumerable<string> GetSignificantNamespace(Type type, int significantNamespaceIndex, Func<string, string>? namespaceTransformer)
         {
-            var namespaceParts = type.Namespace?.Split('.') ?? new string[0];
+            var ns = GetNormalizedNamespace(type, namespaceTransformer);
+            var namespaceParts = ns.Split('.');
             if (significantNamespaceIndex >= namespaceParts.Length)
             {
                 return new string[0];
@@ -64,10 +66,12 @@ namespace BWJ.Core.Web.TypeScriptGen
 
             return namespaceParts.Skip(significantNamespaceIndex);
         }
-        private static int GetSignificantNamespaceIndex(IEnumerable<Type> types)
+        private static int GetSignificantNamespaceIndex(IEnumerable<Type> types, Func<string, string>? namespaceTransformer)
         {
             if (types.Count() < 2) { return 0; }
-            var sampleNamespace = types.First().Namespace?.Split('.') ?? new string[0];
+            var sampleType = types.First(x => x.Namespace is not null);
+            var ns = GetNormalizedNamespace(sampleType, namespaceTransformer);
+            var sampleNamespace = ns.Split('.');
 
             var index = 0;
             for (index = 0; index < sampleNamespace.Length; index++)
@@ -87,8 +91,19 @@ namespace BWJ.Core.Web.TypeScriptGen
             => type.GetCustomAttribute<TypeScriptIncludeAttribute>() is not null;
         private static bool TypeIncludable(Type type, TypeScriptInclusionMode inclusionMode)
             => inclusionMode == TypeScriptInclusionMode.Implicit || TypeRequestedInclusion(type);
-        private static bool TypeNamespaceMatchesPattern(Type type, string pattern)
-            => !string.IsNullOrWhiteSpace(type.Namespace) && Regex.IsMatch(type.Namespace, pattern);
+        private static bool TypeNamespaceMatchesPattern(Type type, string pattern, Func<string, string>? namespaceTransformer)
+        {
+            if(string.IsNullOrWhiteSpace(type.Namespace)) { return false; }
+            var ns = GetNormalizedNamespace(type, namespaceTransformer);
+
+            return Regex.IsMatch(ns, pattern);
+        }
+        private static string GetNormalizedNamespace(Type type, Func<string, string>? namespaceTransformer)
+        {
+            var ns = type.Namespace ?? string.Empty;
+            ns = namespaceTransformer?.Invoke(ns) ?? ns;
+            return ns;
+        }
         private bool IsNovelType(Type type)
             => _generationTargets.Any(t => t.Type.AssemblyQualifiedName == type.AssemblyQualifiedName) == false;
     }

@@ -39,23 +39,23 @@ namespace BWJ.Core.Web.TypeScriptGen
 
         public List<string> TypeScriptImports { get; set; } = new List<string>();
 
-        public bool InterfaceGenerationRequested(TypeScriptOutput rootOutputDemand)
-            => GenerateInterface || IsOutputGenerationRequested(rootOutputDemand, TypeScriptOutput.Interface);
+        public bool InterfaceGenerationRequested(TypeScriptObjectAsset rootOutputDemand)
+            => GenerateInterface || IsOutputGenerationRequested(rootOutputDemand, TypeScriptObjectAsset.Interface);
 
-        public bool ClassGenerationRequested(TypeScriptOutput rootOutputDemand)
-            => GenerateClass || IsOutputGenerationRequested(rootOutputDemand, TypeScriptOutput.Class);
+        public bool ClassGenerationRequested(TypeScriptObjectAsset rootOutputDemand)
+            => GenerateClass || IsOutputGenerationRequested(rootOutputDemand, TypeScriptObjectAsset.Class);
 
-        private bool IsOutputGenerationRequested(TypeScriptOutput rootOutputDemand, TypeScriptOutput outputType)
+        private bool IsOutputGenerationRequested(TypeScriptObjectAsset rootOutputDemand, TypeScriptObjectAsset outputType)
         {
             if (Type.IsEnum) { return false; }
 
             var outputAttr = Type.GetCustomAttribute<TypeScriptOutputAttribute>();
             if (outputAttr is not null && (outputAttr.Output & outputType) == outputType) { return true; }
 
-            var areaGenSpec = AreaConfig.DefaultObjectTypeGeneration;
-            if (areaGenSpec is not null && (areaGenSpec & outputType) == outputType) { return true; }
+            var areaGenSpec = AreaConfig.DefaultObjectAssetGeneration;
+            if ((areaGenSpec & outputType) == outputType) { return true; }
 
-            var assmGenSpec = AreaConfig.AssemblyConfig?.DefaultObjectTypeGeneration;
+            var assmGenSpec = AreaConfig.AssemblyConfig?.DefaultObjectAssetGeneration;
             if (assmGenSpec is not null && (assmGenSpec & outputType) == outputType) { return true; }
 
             return (rootOutputDemand & outputType) == outputType;

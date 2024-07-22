@@ -10,6 +10,6 @@ namespace BWJ.Core.Web.TypeScriptGen
         }
 
         public GenerationTarget GenerationTarget { get; }
-        public TypeScriptOutput? ImportedTypes { get; set; }
+        public TypeScriptObjectAsset? ImportedTypes { get; set; }
     }
 }

@@ -10,29 +10,29 @@ namespace BWJ.Core.Web.TypeScriptGen.Configuration
             string outputDirectoryPath,
             TypeScriptInclusionMode inclusionMode,
             bool clearOutputDirectoryBeforeRegeneration,
-            TypeScriptOutput? defaultObjectTypeGeneration = null,
-            TypeScriptNonValue? regardNativeNullablesAs = null,
+            TypeScriptObjectAsset defaultObjectAssetGeneration = TypeScriptObjectAsset.Inherit,
+            TypeScriptNonValue regardNativeNullablesAs = TypeScriptNonValue.Inherit,
             Func<string, string>? namespaceTransformer = null,
-            Func<string, Type, string>? typeNameTransformer = null)
+            Func<Type, Type>? typeTransformer = null)
         {
             NamespacePattern = namespacePattern;
             OutputDirectoryPath = outputDirectoryPath;
             InclusionMode = inclusionMode;
             ClearOutputDirectoryBeforeRegeneration = clearOutputDirectoryBeforeRegeneration;
-            DefaultObjectTypeGeneration = defaultObjectTypeGeneration;
+            DefaultObjectAssetGeneration = defaultObjectAssetGeneration;
             RegardNativeNullablesAs = regardNativeNullablesAs;
             NamespaceTransformer = namespaceTransformer;
-            TypeNameTransformer = typeNameTransformer;
+            TypeTransformer = typeTransformer;
         }
 
         internal string NamespacePattern { get; }
         internal string OutputDirectoryPath { get; }
         internal TypeScriptInclusionMode InclusionMode { get; }
         internal bool ClearOutputDirectoryBeforeRegeneration { get; }
-        internal TypeScriptOutput? DefaultObjectTypeGeneration { get; }
-        internal TypeScriptNonValue? RegardNativeNullablesAs { get; }
+        internal TypeScriptObjectAsset DefaultObjectAssetGeneration { get; }
+        internal TypeScriptNonValue RegardNativeNullablesAs { get; }
         internal Func<string, string>? NamespaceTransformer { get; }
-        internal Func<string, Type, string>? TypeNameTransformer { get; }
+        internal Func<Type, Type>? TypeTransformer { get; }
         internal TypeScriptAssemblyConfig? AssemblyConfig { get; set; }
     }
 }

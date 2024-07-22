@@ -1,5 +1,6 @@
 ﻿using BWJ.Core.Web.TypeScriptGen.Annotation;
 using System;
+using System.Linq;
 using System.Reflection;
 
 namespace BWJ.Core.Web.TypeScriptGen.Configuration
@@ -12,10 +13,10 @@ namespace BWJ.Core.Web.TypeScriptGen.Configuration
             TypeScriptInclusionMode inclusionMode,
             bool clearOutputDirectoryBeforeRegeneration,
             string namespacePattern = ".+",
-            TypeScriptOutput? defaultObjectTypeGeneration = null,
-            TypeScriptNonValue? regardNativeNullablesAs = null,
+            TypeScriptObjectAsset defaultObjectAssetGeneration = TypeScriptObjectAsset.Inherit,
+            TypeScriptNonValue regardNativeNullablesAs = TypeScriptNonValue.Inherit,
             Func<string, string>? namespaceTransformer = null,
-            Func<string, Type, string>? typeNameTransformer = null)
+            Func<Type, Type>? typeTransformer = null)
         {
             AreaConfigurations = new TypeScriptAreaConfig[] {
                 new TypeScriptAreaConfig (
@@ -23,31 +24,32 @@ namespace BWJ.Core.Web.TypeScriptGen.Configuration
                     outputDirectoryPath,
                     inclusionMode,
                     clearOutputDirectoryBeforeRegeneration,
-                    defaultObjectTypeGeneration,
+                    defaultObjectAssetGeneration,
                     regardNativeNullablesAs,
                     namespaceTransformer,
-                    typeNameTransformer
+                    typeTransformer
                 ),
             };
             Assembly = assembly;
-            DefaultObjectTypeGeneration = defaultObjectTypeGeneration;
+            DefaultObjectAssetGeneration = defaultObjectAssetGeneration;
             RegardNativeNullablesAs = regardNativeNullablesAs;
         }
 
         public TypeScriptAssemblyConfig(Assembly assembly,
-            TypeScriptNonValue? regardNativeNullablesAs = null,
-            TypeScriptOutput? defaultObjectTypeGeneration = null,
-            params TypeScriptAreaConfig[] areaConfigs)
+            TypeScriptNonValue regardNativeNullablesAs,
+            TypeScriptObjectAsset defaultObjectAssetGeneration,
+            TypeScriptAreaConfig areaConfig,
+            params TypeScriptAreaConfig[] additionalAreaConfigs)
         {
             Assembly = assembly;
-            AreaConfigurations = areaConfigs;
-            DefaultObjectTypeGeneration = defaultObjectTypeGeneration;
+            AreaConfigurations = (new TypeScriptAreaConfig[] { areaConfig }).Concat(additionalAreaConfigs).ToArray();
+            DefaultObjectAssetGeneration = defaultObjectAssetGeneration;
             RegardNativeNullablesAs = regardNativeNullablesAs;
         }
 
         internal Assembly Assembly { get; }
-        internal TypeScriptOutput? DefaultObjectTypeGeneration { get; }
-        internal TypeScriptNonValue? RegardNativeNullablesAs { get; }
+        internal TypeScriptObjectAsset DefaultObjectAssetGeneration { get; }
+        internal TypeScriptNonValue RegardNativeNullablesAs { get; }
         internal TypeScriptAreaConfig[] AreaConfigurations { get; }
     }
 }
