@@ -49,7 +49,7 @@ namespace BWJ.Core.Web.TypeScriptGen
                 var type = config.TypeTransformer?.Invoke(x) ?? x;
                 var g = new GenerationTarget(x, config);
                 g.SourcePath.AddRange(pathParts);
-                g.SourcePath.AddRange(GetSignificantNamespace(x, sigIndex, config.NamespaceTransformer));
+                g.SourcePath.AddRange(GetSignificantNamespace(x, sigIndex, config.NamespaceTransformer).Select(y => y.ToKebabCase()));
                 return g;
             });
             _generationTargets.AddRange(genTypes);
