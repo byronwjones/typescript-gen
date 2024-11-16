@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace BWJ.Core.Web.TypeScriptGen
 {
@@ -17,5 +18,6 @@ namespace BWJ.Core.Web.TypeScriptGen
         public bool IsPropertyTypeAGenericParameter { get; set; }
         public bool IsClass { get; set; }
         public List<TypeScriptType> GenericArguments { get; set; } = new List<TypeScriptType>();
+        public Type? OriginalType { get; set; }
     }
 }

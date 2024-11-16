@@ -259,6 +259,7 @@ namespace BWJ.Core.Web.TypeScriptGen
             var tsType = new TypeScriptType
             {
                 PropertyName = prop.Name,
+                OriginalType = prop.PropertyType,
             };
 
             var propType = prop.PropertyType;
@@ -313,6 +314,7 @@ namespace BWJ.Core.Web.TypeScriptGen
         {
             var tsType = new TypeScriptType();
 
+            tsType.OriginalType = type;
             tsType.IsNullable = type.GetCustomAttribute<TypeScriptNullableAttribute>() is not null;
             tsType.IsOptional = type.GetCustomAttribute<TypeScriptOptionalAttribute>() is not null;
             tsType.IsUndefinable = tsType.IsOptional || type.GetCustomAttribute<TypeScriptUndefinableAttribute>() is not null;

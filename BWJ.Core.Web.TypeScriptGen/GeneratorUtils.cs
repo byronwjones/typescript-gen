@@ -80,7 +80,7 @@ namespace BWJ.Core.Web.TypeScriptGen
                 var args = type.GenericArguments.ToArray();
                 if (string.IsNullOrEmpty(args[0].DefaultEnumValue) == false)
                 {
-                    value = $"{{ [key in {GetTypeScriptPropertyType(args[0])}]?: {GetTypeScriptPropertyType(args[1])} }}";
+                    value = $"{{ [key in {GetEnumNamesUnionType(args[0].OriginalType!)}]?: {GetTypeScriptPropertyType(args[1])} }}";
                 }
                 else
                 {
@@ -102,6 +102,13 @@ namespace BWJ.Core.Web.TypeScriptGen
             }
 
             return value;
+        }
+
+        private static string GetEnumNamesUnionType(Type enumType)
+        {
+            var names = enumType.GetEnumNames()
+                .Select(n => $"'{n}'");
+            return string.Join(" | ", names);
         }
 
         public static string GetPropertyValueInitializationSnippet(TypeScriptType type)
